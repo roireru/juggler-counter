@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#171923">
+<title>ジャグラーカウンター</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 16px;
+  background: #171923; color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+h1 { font-size: 23px; text-align: center; margin: 8px 0 5px; }
+.sub { text-align: center; color: #aeb5c5; font-size: 12px; margin-bottom: 20px; }
+.panel {
+  background: #252938; border-radius: 16px;
+  padding: 15px; margin-bottom: 14px;
+}
+label { display: block; font-size: 14px; margin-bottom: 8px; }
+input {
+  width: 100%; padding: 13px; font-size: 21px;
+  border-radius: 10px; border: 1px solid #51596c;
+  background: #171923; color: white;
+}
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.item {
+  background: #252938; border-radius: 16px;
+  padding: 15px 10px; text-align: center;
+}
+.name { font-size: 17px; font-weight: 700; }
+.count { font-size: 35px; font-weight: 800; margin: 10px 0 3px; }
+.prob { color: #c0c7d6; font-size: 13px; min-height: 20px; }
+.controls { display: flex; gap: 9px; margin-top: 13px; }
+button {
+  border: 0; border-radius: 11px; cursor: pointer;
+  font-size: 25px; font-weight: 700; height: 49px;
+  touch-action: manipulation;
+}
+.minus { flex: 1; background: #454c60; color: white; }
+.plus { flex: 1.5; background: #39c978; color: #10251a; }
+.reset {
+  width: 100%; margin-top: 16px; height: 45px;
+  background: #45404b; color: white; font-size: 15px;
+}
+.note { color: #aeb5c5; font-size: 11px; line-height: 1.6; margin-top: 15px; }
+</style>
+</head>
+<body>
+<h1>🎰 ジャグラーカウンター</h1>
+<div class="sub">子役・ボーナス記録</div>
+
+<div class="panel">
+  <label for="games">総ゲーム数（G）</label>
+  <input id="games" type="number" min="0" step="1"
+    inputmode="numeric" placeholder="ゲーム数を入力">
+</div>
+
+<div class="grid" id="counters"></div>
+
+<button class="reset" id="reset">全カウントをリセット</button>
+<div class="note">
+※ 回数はこのブラウザ内に保存されます。<br>
+※ 機種ごとにデータをリセットして使用してください。<br>
+※ 確率は入力したゲーム数と回数から計算した実績値です。
+</div>
+
+<script>
+const initial = { games: 0, grape: 0, cherry: 0, big: 0, reg: 0 };
+let data = { ...initial };
+
+try {
+  const saved = localStorage.getItem("juggler-counter-v1");
+  if (saved) data = { ...initial, ...JSON.parse(saved) };
+} catch (e) {}
+
+const items = [
+  { key: "grape", name: "🍇 ブドウ" },
+  { key: "cherry", name: "🍒 チェリー" },
+  { key: "big", name: "🔴 BIG" },
+  { key: "reg", name: "🔵 REG" }
+];
+
+function save() {
+  try {
+    localStorage.setItem("juggler-counter-v1", JSON.stringify(data));
+  } catch (e) {}
+}
+
+function frequency(count) {
+  if (count <= 0 || data.games <= 0) return "確率：—";
+  return "1/" + (data.games / count).toFixed(2);
+}
+
+function render() {
+  document.getElementById("games").value = data.games || "";
+  document.getElementById("counters").innerHTML = items.map(item => `
+    <div class="item">
+      <div class="name">${item.name}</div>
+      <div class="count">${data[item.key]}</div>
+      <div class="prob">${frequency(data[item.key])}</div>
+      <div class="controls">
+        <button class="minus" data-key="${item.key}" data-delta="-1"
+          aria-label="${item.name}を1減らす">−</button>
+        <button class="plus" data-key="${item.key}" data-delta="1"
+          aria-label="${item.name}を1増やす">＋</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+document.getElementById("games").addEventListener("input", e => {
+  data.games = Math.max(0, Math.floor(Number(e.target.value) || 0));
+  save();
+  render();
+});
+
+document.getElementById("counters").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-key]");
+  if (!btn) return;
+  const key = btn.dataset.key;
+  const delta = Number(btn.dataset.delta);
+  data[key] = Math.max(0, data[key] + delta);
+  save();
+  render();
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  if (!confirm("ゲーム数と全カウントをリセットしますか？")) return;
+  data = { ...initial };
+  save();
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
