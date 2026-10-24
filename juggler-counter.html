@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#171923">
+<title>ジャグラーカウンター</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 16px;
+  background: #171923;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+h1 {
+  font-size: 23px;
+  text-align: center;
+  margin: 8px 0 5px;
+}
+
+.sub {
+  text-align: center;
+  color: #aeb5c5;
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+
+.panel {
+  background: #252938;
+  border-radius: 16px;
+  padding: 15px;
+  margin-bottom: 14px;
+}
+
+label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+input {
+  width: 100%;
+  padding: 13px;
+  font-size: 21px;
+  border-radius: 10px;
+  border: 1px solid #51596c;
+  background: #171923;
+  color: white;
+}
+
+.game-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.total-box {
+  background: #171923;
+  border: 1px solid #51596c;
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+  margin-top: 14px;
+}
+
+.total-label {
+  font-size: 13px;
+  color: #aeb5c5;
+}
+
+.total-games {
+  font-size: 34px;
+  font-weight: 800;
+  color: #39c978;
+  margin-top: 5px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.item {
+  background: #252938;
+  border-radius: 16px;
+  padding: 15px 10px;
+  text-align: center;
+  min-width: 0;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 700;
+  min-height: 24px;
+}
+
+.count {
+  font-size: 35px;
+  font-weight: 800;
+  margin: 10px 0 3px;
+}
+
+.prob {
+  color: #c0c7d6;
+  font-size: 13px;
+  min-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.controls {
+  display: flex;
+  gap: 9px;
+  margin-top: 13px;
+}
+
+button {
+  border: 0;
+  border-radius: 11px;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 700;
+  height: 49px;
+  touch-action: manipulation;
+}
+
+.minus {
+  flex: 1;
+  background: #454c60;
+  color: white;
+}
+
+.plus {
+  flex: 1.5;
+  background: #39c978;
+  color: #10251a;
+}
+
+.section-title {
+  font-size: 15px;
+  color: #aeb5c5;
+  margin: 20px 0 10px;
+}
+
+.reset {
+  width: 100%;
+  margin-top: 16px;
+  height: 45px;
+  background: #45404b;
+  color: white;
+  font-size: 15px;
+}
+
+.note {
+  color: #aeb5c5;
+  font-size: 11px;
+  line-height: 1.8;
+  margin-top: 15px;
+}
+
+@media (max-width: 350px) {
+  body { padding: 10px; }
+  .grid { gap: 8px; }
+  .item { padding: 12px 7px; }
+  .name { font-size: 14px; }
+  .count { font-size: 30px; }
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎰 ジャグラーカウンター</h1>
+<div class="sub">ゲーム数・小役・ボーナス記録</div>
+
+<div class="panel">
+  <div class="game-inputs">
+    <div>
+      <label for="startGames">開始ゲーム数（G）</label>
+      <input id="startGames" type="number"
+        min="0" step="1" inputmode="numeric"
+        placeholder="例：1200">
+    </div>
+
+    <div>
+      <label for="endGames">終了ゲーム数（G）</label>
+      <input id="endGames" type="number"
+        min="0" step="1" inputmode="numeric"
+        placeholder="例：1800">
+    </div>
+  </div>
+
+  <div class="total-box">
+    <div class="total-label">今回の総ゲーム数</div>
+    <div class="total-games" id="totalGames">0 G</div>
+  </div>
+</div>
+
+<div class="section-title">🍇 小役カウント</div>
+<div class="grid" id="smallCounters"></div>
+
+<div class="section-title">🎯 ボーナス・重複カウント</div>
+<div class="grid" id="bonusCounters"></div>
+
+<button class="reset" id="reset">全データをリセット</button>
+
+<div class="note">
+※ 開始Gと終了Gの差から総ゲーム数を自動計算します。<br>
+※ チェリー総数は成立したチェリーをすべて記録します。<br>
+※ チェリー重複BIG・REGは、それぞれ別に記録します。<br>
+※ 確率は総ゲーム数に対する実績値です。<br>
+※ データはこのブラウザ内に保存されます。<br>
+※ 機種変更や新しい実戦の際はリセットしてください。
+</div>
+
+<script>
+const initial = {
+  startGames: 0,
+  endGames: 0,
+  grape: 0,
+  cherry: 0,
+  big: 0,
+  reg: 0,
+  cherryBig: 0,
+  cherryReg: 0
+};
+
+let data = { ...initial };
+
+try {
+  const saved = localStorage.getItem("juggler-counter-v2");
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    data = { ...initial, ...parsed };
+
+    // カウント値を0以上の整数に補正
+    Object.keys(initial).forEach(key => {
+      const value = Number(data[key]);
+      data[key] = Number.isFinite(value)
+        ? Math.max(0, Math.floor(value))
+        : 0;
+    });
+  }
+} catch (e) {
+  data = { ...initial };
+}
+
+const smallItems = [
+  { key: "grape", name: "🍇 ブドウ" },
+  { key: "cherry", name: "🍒 チェリー総数" }
+];
+
+const bonusItems = [
+  { key: "big", name: "🔴 BIG総数" },
+  { key: "reg", name: "🔵 REG総数" },
+  { key: "cherryBig", name: "🍒🔴 チェリー重複BIG" },
+  { key: "cherryReg", name: "🍒🔵 チェリー重複REG" }
+];
+
+function getGames() {
+  return Math.max(0, data.endGames - data.startGames);
+}
+
+function save() {
+  try {
+    localStorage.setItem(
+      "juggler-counter-v2",
+      JSON.stringify(data)
+    );
+  } catch (e) {}
+}
+
+function frequency(count) {
+  const games = getGames();
+
+  if (count <= 0 || games <= 0) {
+    return "確率：—";
+  }
+
+  return "1/" + (games / count).toFixed(2);
+}
+
+function renderGames() {
+  document.getElementById("totalGames").textContent =
+    getGames().toLocaleString() + " G";
+}
+
+function renderCounters(containerId, items) {
+  document.getElementById(containerId).innerHTML =
+    items.map(item => `
+      <div class="item">
+        <div class="name">${item.name}</div>
+        <div class="count">${data[item.key]}</div>
+        <div class="prob">${frequency(data[item.key])}</div>
+
+        <div class="controls">
+          <button
+            class="minus"
+            data-key="${item.key}"
+            data-delta="-1"
+            aria-label="${item.name}を1減らす"
+          >−</button>
+
+          <button
+            class="plus"
+            data-key="${item.key}"
+            data-delta="1"
+            aria-label="${item.name}を1増やす"
+          >＋</button>
+        </div>
+      </div>
+    `).join("");
+}
+
+function render() {
+  document.getElementById("startGames").value =
+    data.startGames || "";
+
+  document.getElementById("endGames").value =
+    data.endGames || "";
+
+  renderGames();
+  renderCounters("smallCounters", smallItems);
+  renderCounters("bonusCounters", bonusItems);
+}
+
+function updateGameInput(field, value) {
+  const number = Number(value);
+
+  data[field] = value === "" || !Number.isFinite(number)
+    ? 0
+    : Math.max(0, Math.floor(number));
+
+  save();
+  renderGames();
+
+  // ゲーム数が変わったら、全確率を更新
+  renderCounters("smallCounters", smallItems);
+  renderCounters("bonusCounters", bonusItems);
+}
+
+document.getElementById("startGames")
+  .addEventListener("input", e => {
+    updateGameInput("startGames", e.target.value);
+  });
+
+document.getElementById("endGames")
+  .addEventListener("input", e => {
+    updateGameInput("endGames", e.target.value);
+  });
+
+function handleCounterClick(e) {
+  const btn = e.target.closest("button[data-key]");
+  if (!btn) return;
+
+  const key = btn.dataset.key;
+  const delta = Number(btn.dataset.delta);
+
+  if (!(key in data) || key === "startGames" ||
+      key === "endGames") return;
+
+  data[key] = Math.max(0, data[key] + delta);
+
+  save();
+  renderCounters("smallCounters", smallItems);
+  renderCounters("bonusCounters", bonusItems);
+}
+
+document.getElementById("smallCounters")
+  .addEventListener("click", handleCounterClick);
+
+document.getElementById("bonusCounters")
+  .addEventListener("click", handleCounterClick);
+
+document.getElementById("reset").addEventListener("click", () => {
+  if (!confirm("ゲーム数と全カウントをリセットしますか？")) {
+    return;
+  }
+
+  data = { ...initial };
+  save();
+  render();
+});
+
+render();
+</script>
+
+</body>
+</html>
