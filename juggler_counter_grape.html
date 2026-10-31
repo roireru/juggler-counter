@@ -80,7 +80,16 @@ button{border:0;border-radius:11px;cursor:pointer;font-size:25px;font-weight:700
     </select>
     <div class="form-grid" style="margin-top:14px">
       <div><label for="revGames">ゲーム数（G）</label><input id="revGames" type="number" min="0" step="1" inputmode="numeric" placeholder="例：6000"></div>
-      <div><label for="revDiff">差枚（枚）</label><input id="revDiff" type="number" step="1" inputmode="numeric" placeholder="例：500"></div>
+      <div>
+          <label for="revDiff">差枚（枚）</label>
+          <input
+              id="revDiff"
+              type="number"
+              step="1"
+              inputmode="text"
+              placeholder="例：500（マイナス可）"
+          >
+      </div>
       <div><label for="revBig">BIG回数</label><input id="revBig" type="number" min="0" step="1" inputmode="numeric" placeholder="例：20"></div>
       <div><label for="revReg">REG回数</label><input id="revReg" type="number" min="0" step="1" inputmode="numeric" placeholder="例：18"></div>
     </div>
@@ -126,7 +135,36 @@ function render(){document.getElementById("startGames").value=data.startGames||"
 function updateGameInput(field,value){const number=Number(value);data[field]=value===""||!Number.isFinite(number)?0:Math.max(0,Math.floor(number));save();renderGames();renderCounters("smallCounters",smallItems);renderCounters("bonusCounters",bonusItems);}
 document.getElementById("startGames").addEventListener("input",e=>updateGameInput("startGames",e.target.value));
 document.getElementById("endGames").addEventListener("input",e=>updateGameInput("endGames",e.target.value));
-function handleCounterClick(e){const btn=e.target.closest("button[data-key]");if(!btn)return;const key=btn.dataset.key,delta=Number(btn.dataset.delta);if(!(key in data)||key==="startGames"||key==="endGames")return;data[key]=Math.max(0,data[key]+delta);save();renderCounters("smallCounters",smallItems);renderCounters("bonusCounters",bonusItems);}
+function handleCounterClick(e) {
+    const btn = e.target.closest("button[data-key]");
+    if (!btn) return;
+
+    const key = btn.dataset.key;
+    const delta = Number(btn.dataset.delta);
+
+    if (!(key in data) || key === "startGames" || key === "endGames") {
+        return;
+    }
+
+    // チェリー重複BIG・REGとボーナス総数を連動させる
+    if (key === "cherryBig" || key === "cherryReg") {
+        const actualDelta = delta > 0 ? 1 : (data[key] > 0 ? -1 : 0);
+
+        // チェリー重複回数を変更
+        data[key] = Math.max(0, data[key] + actualDelta);
+
+        // 対応するボーナス総数も同じだけ変更
+        const bonusKey = key === "cherryBig" ? "big" : "reg";
+        data[bonusKey] = Math.max(0, data[bonusKey] + actualDelta);
+    } else {
+        // その他のカウンターは従来どおり
+        data[key] = Math.max(0, data[key] + delta);
+    }
+
+    save();
+    renderCounters("smallCounters", smallItems);
+    renderCounters("bonusCounters", bonusItems);
+}
 document.getElementById("smallCounters").addEventListener("click",handleCounterClick);
 document.getElementById("bonusCounters").addEventListener("click",handleCounterClick);
 document.getElementById("reset").addEventListener("click",()=>{if(!confirm("ゲーム数と全カウントをリセットしますか？"))return;data={...initial};save();render();});
